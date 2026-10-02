@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบวิเคราะห์และแดชบอร์ดสรุปผู้ใช้บริการห้องประชุมห้องสมุด</title>
+    <!-- Google Fonts: Noto Sans Thai & Sarabun -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for elegant icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- ApexCharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- SheetJS for Client-Side Excel/CSV Upload on Netlify -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <!-- Sidebar Backdrop Overlay for Mobile -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside id="app-sidebar" class="sidebar">
+            <div class="sidebar-header" style="height: auto; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between;">
+                <div class="logo" style="gap: 8px;">
+                    <img src="logo.png" alt="CUVET LIBRARY Logo" style="height: 48px; width: auto; object-fit: contain;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); line-height: 1.25; font-family: 'Noto Sans Thai', sans-serif;">ห้องสมุดและศูนย์เอกสารการสัตว์</span>
+                        <span style="font-size: 0.7rem; font-weight: 500; color: var(--text-secondary); line-height: 1.25; font-family: 'Noto Sans Thai', sans-serif;">คณะสัตวแพทยศาสตร์ จุฬาฯ</span>
+                    </div>
+                </div>
+                <button id="btn-sidebar-close" class="sidebar-close-btn" title="ปิดแถบเมนู">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="#summary" class="menu-item active" data-tab="tab-summary">
+                    <i class="fa-solid fa-chart-pie"></i> <span>สรุปภาพรวม</span>
+                </a>
+                <a href="#rooms" class="menu-item" data-tab="tab-rooms">
+                    <i class="fa-solid fa-door-open"></i> <span>สถิติห้องประชุม</span>
+                </a>
+                <a href="#doors" class="menu-item" data-tab="tab-doors">
+                    <i class="fa-solid fa-users-line"></i> <span>การเข้าใช้ห้องสมุด</span>
+                </a>
+                <a href="#analysis" class="menu-item" data-tab="tab-analysis">
+                    <i class="fa-solid fa-lightbulb"></i> <span>บทวิเคราะห์และข้อเสนอแนะ</span>
+                </a>
+                <a href="#settings" class="menu-item" data-tab="tab-settings">
+                    <i class="fa-solid fa-calendar-days"></i> <span>จัดการปีข้อมูล</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <p>พัฒนาสำหรับผู้บริหารห้องสมุด</p>
+                <div class="status-indicator">
+                    <span class="dot online"></span>
+                    <span>ระบบเชื่อมต่อสำเร็จ</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Navigation / Status Header -->
+            <header class="content-header">
+                <div class="header-left" style="display: flex; align-items: center; gap: 14px;">
+                    <button id="btn-sidebar-toggle" class="sidebar-toggle-btn" title="เปิด/ปิด แถบเมนูด้านข้าง">
+                        <i class="fa-solid fa-bars-staggered"></i>
+                    </button>
+                    <div class="header-title">
+                        <h1>แดชบอร์ดสรุปผู้ใช้ห้องประชุมและห้องสมุด</h1>
+                        <p id="header-subtitle" class="subtitle">สรุปข้อมูลสถิติมุมมองผู้บริหาร รายเดือนประจำปี พ.ศ. 2566 - 2569</p>
+                    </div>
+                </div>
+                <div class="header-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <button id="btn-print-pdf" class="btn" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #fff; border: none; padding: 9px 16px; border-radius: 20px; font-family: 'Noto Sans Thai', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); transition: all 0.25s ease;" title="พิมพ์รายงานสรุปผู้บริหารเป็นจัดหน้ากระดาษ A4 หรือบันทึกเป็น PDF">
+                        <i class="fa-solid fa-file-pdf"></i> พิมพ์รายงาน A4 (PDF)
+                    </button>
+                    <button id="btn-publish-online" class="btn" style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); color: #fff; border: none; padding: 9px 16px; border-radius: 20px; font-family: 'Noto Sans Thai', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25); transition: all 0.25s ease;" title="อัปเดตรายงานล่าสุดขึ้นระบบออนไลน์สำหรับผู้บริหารทันที">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> อัปเดตรายงานออนไลน์ (1-Click Publish)
+                    </button>
+                    <span id="sync-time" class="sync-badge"><i class="fa-solid fa-clock-rotate-left"></i> อัปเดตล่าสุด: กำลังโหลด...</span>
+                </div>
+            </header>
+
+            <!-- TAB 1: สรุปภาพรวม (Tab Summary) -->
+            <section id="tab-summary" class="tab-panel active-panel">
+                <!-- Executive Briefing Card -->
+                <div class="executive-briefing-card" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff; border-radius: 16px; padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3); border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="font-family: 'Noto Sans Thai', sans-serif; font-size: 1.05rem; font-weight: 700; color: #38bdf8; margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-bolt" style="color: #fbbf24;"></i> สรุปสำหรับผู้บริหาร (Executive Highlights)
+                        </h3>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <!-- Voice Briefing Button -->
+                            <button type="button" id="btn-voice-briefing" class="btn" style="background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); color: #ffffff; border: none; padding: 6px 14px; border-radius: 20px; font-family: 'Noto Sans Thai', sans-serif; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3); transition: all 0.2s ease;">
+                                <i class="fa-solid fa-volume-high"></i> <span id="text-voice-briefing">ฟังเสียงสรุป (1 นาที)</span>
+                            </button>
+                            <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.75rem; padding: 4px 10px;">สรุปเรียลไทม์</span>
+                        </div>
+                    </div>
+                    <div class="briefing-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                        <div class="briefing-item" style="background: rgba(255, 255, 255, 0.05); padding: 12px 16px; border-radius: 10px; border-left: 3px solid #3b82f6;">
+                            <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 4px;"><i class="fa-solid fa-star text-amber"></i> ห้องประชุมยอดนิยมอันดับ 1</div>
+                            <div style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;" id="briefing-top-room">ห้อง 909 (28.4%)</div>
+                        </div>
+                        <div class="briefing-item" style="background: rgba(255, 255, 255, 0.05); padding: 12px 16px; border-radius: 10px; border-left: 3px solid #10b981;">
+                            <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 4px;"><i class="fa-solid fa-clock text-green"></i> ช่วงกะเวลาที่มีผู้ใช้สูงสุด</div>
+                            <div style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;" id="briefing-top-shift">กะบ่าย (12.01 - 19.00 น.)</div>
+                        </div>
+                        <div class="briefing-item" style="background: rgba(255, 255, 255, 0.05); padding: 12px 16px; border-radius: 10px; border-left: 3px solid #f59e0b;">
+                            <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 4px;"><i class="fa-solid fa-graduation-cap text-indigo"></i> ช่วงขยายเวลาพิเศษ 24 ชม.</div>
+                            <div style="font-weight: 700; color: #f8fafc; font-size: 0.95rem;" id="briefing-exam-months">มี.ค., พ.ค., ก.ย., ต.ค.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Global Filter Bar -->
+                <div class="filter-card glass-card" style="margin-bottom: 20px; padding: 16px 20px;">
+                    <div class="filter-header" style="margin-bottom: 12px;">
+                        <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-filter text-blue"></i> ตัวคัดกรองข้อมูล (Filter Controls)
+                        </h3>
+                    </div>
+                    <div class="filter-controls" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                        <div class="control-group" style="flex: 1; min-width: 180px;">
+                            <label for="select-year" style="font-family: var(--font-heading); font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                                <span><i class="fa-solid fa-calendar-days"></i> เลือกปี พ.ศ.</span>
+                                <button type="button" id="btn-filter-add-year" class="btn" style="background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); padding: 2px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s ease;" title="เพิ่มสถิติปี พ.ศ. ใหม่">
+                                    <i class="fa-solid fa-plus-circle"></i> + เพิ่มปี พ.ศ.
+                                </button>
+                            </label>
+                            <select id="select-year" class="form-control" style="width: 100%; height: 38px;">
+                                <option value="all" selected>ทุกปีสะสมรวมทั้งหมด</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Grid with Clean Sparklines -->
+                <div class="kpi-container">
+                    <div class="kpi-card">
+                        <svg class="kpi-sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
+                            <path d="M0 25 Q 25 10, 50 18 T 100 5 L 100 30 L 0 30 Z" fill="rgba(56, 189, 248, 0.15)"/>
+                            <path d="M0 25 Q 25 10, 50 18 T 100 5" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                        </svg>
+                        <div class="kpi-icon bg-soft-blue"><i class="fa-solid fa-users"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">ผู้ใช้ห้องประชุมรวม <i class="fa-solid fa-circle-info info-icon" title="💡 ที่มา: ผลรวมผู้ใช้ห้องประชุมทุกห้องตลอดช่วงปีที่เลือก"></i></span>
+                            <h2 id="kpi-total-room-users" class="kpi-value">-</h2>
+                            <span id="kpi-room-users-sub" class="kpi-subtext">กำลังคำนวณ...</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <svg class="kpi-sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
+                            <path d="M0 22 Q 30 5, 60 15 T 100 3 L 100 30 L 0 30 Z" fill="rgba(52, 211, 153, 0.15)"/>
+                            <path d="M0 22 Q 30 5, 60 15 T 100 3" fill="none" stroke="#34d399" stroke-width="2"/>
+                        </svg>
+                        <div class="kpi-icon bg-soft-green"><i class="fa-solid fa-door-closed"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">ห้องประชุมยอดนิยม <i class="fa-solid fa-circle-info info-icon" title="💡 ที่มา: คำนวณจากห้องประชุมที่มียอดสะสมผู้เข้าใช้บริการสูงสุด"></i></span>
+                            <h2 id="kpi-popular-room" class="kpi-value">-</h2>
+                            <span id="kpi-popular-room-sub" class="kpi-subtext">กำลังคำนวณ...</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <svg class="kpi-sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
+                            <path d="M0 28 Q 20 18, 50 8 T 100 2 L 100 30 L 0 30 Z" fill="rgba(251, 191, 36, 0.15)"/>
+                            <path d="M0 28 Q 20 18, 50 8 T 100 2" fill="none" stroke="#fbbf24" stroke-width="2"/>
+                        </svg>
+                        <div class="kpi-icon bg-soft-amber"><i class="fa-solid fa-calendar-check"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">เดือนใช้งานสูงสุด (Peak Month) <i class="fa-solid fa-circle-info info-icon" title="💡 ที่มา: เดือนที่มียอดสะสมผู้ใช้บริการห้องประชุมสูงสุด"></i></span>
+                            <h2 id="kpi-peak-month" class="kpi-value">-</h2>
+                            <span id="kpi-peak-month-sub" class="kpi-subtext">กำลังคำนวณ...</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon bg-soft-red"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">สัดส่วนผู้ใช้ห้องประชุม (Conversion) <i class="fa-solid fa-circle-info info-icon" title="💡 สูตร: (ยอดผู้ใช้ห้องประชุม ÷ ยอดสแกนเข้าห้องสมุด) × 100"></i></span>
+                            <h2 id="kpi-conversion-rate" class="kpi-value">-</h2>
+                            <span id="kpi-conversion-rate-sub" class="kpi-subtext">เทียบสัดส่วนคนเข้าห้องสมุด</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Overview Charts -->
+                <div class="chart-row-double">
+                    <div class="chart-card glass-card">
+                        <div class="chart-card-header">
+                            <h3><i class="fa-solid fa-chart-line text-blue"></i> แนวโน้มผู้ใช้ห้องประชุมรายเดือน</h3>
+                            <p>เปรียบเทียบแนวโน้มการใช้งานแต่ละปี พ.ศ.</p>
+                        </div>
+                        <div class="executive-takeaway-banner">
+                            <div class="takeaway-header">
+                                <span class="takeaway-title"><i class="fa-solid fa-lightbulb text-amber"></i> สรุปสั้นสำหรับผู้บริหาร:</span>
+                                <div class="view-mode-toggle" data-chart="chart-room-comparison" data-text="text-summary-room-comparison">
+                                    <button class="toggle-btn active" data-mode="graph"><i class="fa-solid fa-chart-line"></i> กราฟ</button>
+                                    <button class="toggle-btn" data-mode="text"><i class="fa-solid fa-comment-dots"></i> สรุปง่าย</button>
+                                </div>
+                            </div>
+                            <div id="text-summary-room-comparison" class="takeaway-body" style="display: none;">
+                                <ul>
+                                    <li><b>📈 ช่วงพีคสูงสุด:</b> เดือน <b>ก.ย. และ มี.ค.</b> ยอดเข้าใช้งานพุ่งสูงที่สุด (ตรงช่วงสอบ)</li>
+                                    <li><b>📉 ช่วงปิดเทอม:</b> เดือน <b>เม.ย. และ ธ.ค.</b> ยอดจะลดลงชัดเจน</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="chart-container" id="container-room-comparison">
+                            <div id="chart-room-comparison"></div>
+                        </div>
+                    </div>
+
+                    <div class="chart-card glass-card">
+                        <div class="chart-card-header">
+                            <h3><i class="fa-solid fa-chart-column text-green"></i> สัดส่วนใช้งานแยกตามรายห้อง</h3>
+                            <p>เปรียบเทียบความนิยมแต่ละห้องประชุม</p>
+                        </div>
+                        <div class="executive-takeaway-banner">
+                            <div class="takeaway-header">
+                                <span class="takeaway-title"><i class="fa-solid fa-lightbulb text-amber"></i> สรุปสั้นสำหรับผู้บริหาร:</span>
+                                <div class="view-mode-toggle" data-chart="chart-room-distribution" data-text="text-summary-room-distribution">
+                                    <button class="toggle-btn active" data-mode="graph"><i class="fa-solid fa-chart-pie"></i> กราฟ</button>
+                                    <button class="toggle-btn" data-mode="text"><i class="fa-solid fa-comment-dots"></i> สรุปง่าย</button>
+                                </div>
+                            </div>
+                            <div id="text-summary-room-distribution" class="takeaway-body" style="display: none;">
+                                <ul>
+                                    <li><b>🏆 ยอดนิยมอันดับ 1-2:</b> <b>ห้อง 909 และ 908</b> มียอดใช้งานรวมกันเกิน <b>45%</b></li>
+                                    <li><b>💡 คำแนะนำ:</b> เน้นดูแลบำรุงรักษาอุปกรณ์ไมค์และจอภาพห้อง 909 และ 908 เป็นหลัก</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="chart-container" id="container-room-distribution">
+                            <div id="chart-room-distribution"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-row-single">
+                    <div class="chart-card glass-card">
+                        <div class="chart-card-header">
+                            <h3><i class="fa-solid fa-chart-area text-purple"></i> ความสัมพันธ์เข้าห้องสมุด vs ห้องประชุม</h3>
+                            <p>เปรียบเทียบยอดสแกนประตูหน้าและผู้ใช้ห้องประชุม</p>
+                        </div>
+                        <div class="executive-takeaway-banner">
+                            <div class="takeaway-header">
+                                <span class="takeaway-title"><i class="fa-solid fa-lightbulb text-amber"></i> สรุปสั้นสำหรับผู้บริหาร:</span>
+                                <div class="view-mode-toggle" data-chart="chart-correlation" data-text="text-summary-correlation">
+                                    <button class="toggle-btn active" data-mode="graph"><i class="fa-solid fa-chart-area"></i> กราฟ</button>
+                                    <button class="toggle-btn" data-mode="text"><i class="fa-solid fa-comment-dots"></i> สรุปง่าย</button>
+                                </div>
+                            </div>
+                            <div id="text-summary-correlation" class="takeaway-body" style="display: none;">
+                                <ul>
+                                    <li><b>🔗 ความสัมพันธ์:</b> ปริมาณผู้เข้าห้องสมุดสอดคล้องกับผู้ใช้ห้องประชุมกลุ่มย่อย (Conversion ~16%)</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="chart-container" id="container-correlation">
+                            <div id="chart-correlation"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Methodology Reference Note for Executives -->
+                <div class="methodology-box">
+                    <div style="font-weight: 700; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-book-bookmark text-blue"></i> คำอธิบายตัวชี้วัด (Methodology Reference):
+                    </div>
+                    <ul style="margin: 0; padding-left: 20px; line-height: 1.6; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px;">
+                        <li><b>ผู้ใช้ห้องประชุมรวม:</b> ผลรวมผู้ใช้ห้องประชุมทุกห้อง (คน-ครั้ง)</li>
+                        <li><b>สัดส่วนใช้ห้องประชุม:</b> <code>(ยอดใช้ห้องประชุม ÷ ยอดสแกนประตู) × 100</code></li>
+                        <li><b>การเติบโต YoY:</b> <code>((ยอดปีล่าสุด - ยอดปีก่อน) ÷ ยอดปีก่อน) × 100</code></li>
+                        <li><b>ยอดประตูทางเข้า:</b> นับการแตะบัตรเข้าประตูอัตโนมัติ 4 กะเวลา</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- TAB 2: สถิติห้องประชุม (Tab Rooms) -->
+            <section id="tab-rooms" class="tab-panel">
+                <div class="section-card glass-card">
+                    <div class="section-card-header">
+                        <h2><i class="fa-solid fa-door-open text-blue"></i> ข้อมูลสถิติรายห้องประชุม</h2>
+                        <p>ข้อมูลเจาะลึกการเข้าใช้งานแยกตามรายห้องและตารางสรุปรายเดือน</p>
+                    </div>
+                    
+                    <div class="control-row" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 20px;">
+                        <div class="control-group" style="flex: 1; max-width: 300px; min-width: 150px;">
+                            <label for="select-year-room"><i class="fa-regular fa-calendar"></i> เลือกปี พ.ศ.</label>
+                            <select id="select-year-room" class="form-control" style="width: 100%; height: 42px;">
+                                <option value="all" selected>ทุกปีสะสมรวมทั้งหมด</option>
+                            </select>
+                        </div>
+                        <div class="control-group" style="flex: 1; max-width: 300px; min-width: 200px;">
+                            <label for="select-room-filter"><i class="fa-solid fa-door-open"></i> เลือกห้องประชุม</label>
+                            <select id="select-room-filter" class="form-control" style="width: 100%; height: 42px;">
+                                <option value="all" selected>ทุกห้องประชุมทั้งหมด</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="chart-row-double">
+                        <div class="chart-card no-shadow">
+                            <div class="chart-card-header">
+                                <h3>สัดส่วนการใช้ห้องประชุม</h3>
+                                <p>เปรียบเทียบสัดส่วนเปอร์เซ็นต์ตามรายห้อง</p>
+                            </div>
+                            <div id="chart-room-freq"></div>
+                        </div>
+                        <div class="chart-card no-shadow">
+                            <div class="chart-card-header">
+                                <h3>ตารางสรุปสถิติรายเดือน (คน-ครั้ง)</h3>
+                                <p>สรุปยอดรวมและห้องยอดนิยมประจำเดือน</p>
+                            </div>
+                            <div class="table-wrapper">
+                                <table id="table-room-data" class="premium-table">
+                                    <thead>
+                                        <tr>
+                                            <th>เดือน</th>
+                                            <th>ยอดรวมปีนี้</th>
+                                            <th>ห้องยอดนิยมประจำเดือน</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Will be populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: การเข้าใช้ห้องสมุด (Tab Doors) -->
+            <section id="tab-doors" class="tab-panel">
+                <div class="section-card glass-card">
+                    <div class="section-card-header">
+                        <h2><i class="fa-solid fa-users-line text-green"></i> สถิติการเดินเข้าประตูห้องสมุด (Library Entry Analysis)</h2>
+                        <p>วิเคราะห์ปริมาณการเข้าประตูห้องสมุดจำแนกตามช่วงเวลาของการเปิดให้บริการ</p>
+                    </div>
+                    <div class="control-row" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; padding: 0 24px;">
+                        <!-- Shift Filter -->
+                        <div class="control-group" style="flex: 1; max-width: 240px; min-width: 180px;">
+                            <label for="select-shift-filter" style="font-family: var(--font-heading); font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;"><i class="fa-solid fa-clock"></i> เลือกช่วงกะเวลา</label>
+                            <select id="select-shift-filter" class="form-control" style="width: 100%; height: 42px;">
+                                <option value="all" selected>ทุกช่วงกะเวลาทั้งหมด</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Year Filter -->
+                        <div class="control-group" style="flex: 1; max-width: 200px; min-width: 150px;">
+                            <label for="select-year-door" style="font-family: var(--font-heading); font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;"><i class="fa-solid fa-calendar-days"></i> เลือกปี พ.ศ.</label>
+                            <select id="select-year-door" class="form-control" style="width: 100%; height: 42px;">
+                                <option value="all" selected>ทุกปีทั้งหมด</option>
+                            </select>
+                        </div>
+
+                        <!-- Month Range Filter -->
+                        <div class="control-group" style="flex: 2; max-width: 420px; min-width: 280px;">
+                            <label style="font-family: var(--font-heading); font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;"><i class="fa-solid fa-calendar-minus"></i> เลือกช่วงเดือน</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <select id="select-start-month-door" class="form-control" style="width: 48%; height: 42px;">
+                                    <option value="1" selected>มกราคม</option>
+                                    <option value="2">กุมภาพันธ์</option>
+                                    <option value="3">มีนาคม</option>
+                                    <option value="4">เมษายน</option>
+                                    <option value="5">พฤษภาคม</option>
+                                    <option value="6">มิถุนายน</option>
+                                    <option value="7">กรกฎาคม</option>
+                                    <option value="8">สิงหาคม</option>
+                                    <option value="9">กันยายน</option>
+                                    <option value="10">ตุลาคม</option>
+                                    <option value="11">พฤศจิกายน</option>
+                                    <option value="12">ธันวาคม</option>
+                                </select>
+                                <span style="color: var(--text-secondary); font-weight: bold;">ถึง</span>
+                                <select id="select-end-month-door" class="form-control" style="width: 48%; height: 42px;">
+                                    <option value="1">มกราคม</option>
+                                    <option value="2">กุมภาพันธ์</option>
+                                    <option value="3">มีนาคม</option>
+                                    <option value="4">เมษายน</option>
+                                    <option value="5">พฤษภาคม</option>
+                                    <option value="6">มิถุนายน</option>
+                                    <option value="7">กรกฎาคม</option>
+                                    <option value="8">สิงหาคม</option>
+                                    <option value="9">กันยายน</option>
+                                    <option value="10">ตุลาคม</option>
+                                    <option value="11">พฤศจิกายน</option>
+                                    <option value="12" selected>ธันวาคม</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exam Period Auto-Detection Alert Panel -->
+                    <div id="exam-extension-alert-container" style="padding: 0 24px; margin-bottom: 20px;"></div>
+
+                    <div class="chart-row-double">
+                        <div class="chart-card no-shadow">
+                            <div class="chart-card-header">
+                                <h3><i class="fa-solid fa-business-time text-amber"></i> ยอดผู้ใช้บริการห้องสมุดแบ่งตามช่วงกะเวลา</h3>
+                                <p>วิเคราะห์ความหนาแน่นของผู้เข้าใช้บริการเพื่อวางกำลังเจ้าหน้าที่</p>
+                                <div class="chart-methodology-tag"><i class="fa-solid fa-calculator text-primary"></i> <b>ที่มา:</b> การสแกนบัตรผ่านประตูอัตโนมัติ 4 กะเวลาทำการ</div>
+                            </div>
+                            <div id="chart-door-shifts"></div>
+                        </div>
+                        <div class="chart-card no-shadow">
+                            <div class="chart-card-header">
+                                <h3><i class="fa-solid fa-arrow-trend-up text-blue"></i> แนวโน้มการเข้าประตูหน้าห้องสมุดรายปี (2566 - 2569)</h3>
+                                <p>แสดงการฟื้นตัวและเติบโตของการเดินทางเข้าใช้ห้องสมุด</p>
+                                <div class="chart-methodology-tag"><i class="fa-solid fa-calculator text-primary"></i> <b>ที่มา:</b> ผลรวมยอดสแกนบัตรผ่านประตูหน้าห้องสมุดแยกตามรายเดือน</div>
+                            </div>
+                            <div id="chart-door-trend-yearly"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: บทวิเคราะห์และข้อเสนอแนะ (Tab Analysis) -->
+            <section id="tab-analysis" class="tab-panel">
+                <div class="section-card glass-card" style="position: relative;">
+                    <!-- Edit Button for Admin -->
+                    <button id="btn-edit-analysis" class="btn-primary" style="position: absolute; top: 24px; right: 24px; display: none; z-index: 10; height: 38px; padding: 0 16px; font-size: 0.85rem; border-radius: 6px;">
+                        <i class="fa-solid fa-pen-to-square"></i> แก้ไขบทวิเคราะห์
+                    </button>
+                    
+                    <div id="analysis-display-view">
+                        <!-- Executive Summary Panel -->
+                        <div class="analysis-deck">
+                            <div class="analysis-card highlighted-card">
+                                <div class="analysis-card-icon"><i class="fa-solid fa-award"></i></div>
+                                <div class="analysis-card-body">
+                                    <h2>บทวิเคราะห์สรุปสำหรับผู้บริหาร (Executive Summary)</h2>
+                                    <p class="lead-text">
+                                        จากการวิเคราะห์ข้อมูลความสัมพันธ์ระหว่างผู้ใช้บริการหน้าห้องสมุดและจำนวนผู้ใช้งานห้องประชุม 
+                                        ประจำปี พ.ศ. 2566 ถึง 2569 มีข้อสังเกตและดัชนีชี้วัดที่สำคัญสำหรับการวางแผนเชิงกลยุทธ์ของห้องสมุดในอนาคตดังนี้:
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Highlighted Point 1 -->
+                            <div class="analysis-card">
+                                <div class="card-num">01</div>
+                                <div class="analysis-card-content">
+                                    <h3>ช่วงสอบปลายภาคเป็นกลไกขับเคลื่อนหลัก (Exam-Driven Demand)</h3>
+                                    <p>
+                                        จำนวนยอดเข้าห้องสมุดและห้องประชุมมีความสัมพันธ์อย่างยิ่งกับปฏิทินการศึกษาอย่างชัดเจน:
+                                    </p>
+                                    <ul>
+                                        <li><strong>ช่วงวิกฤตความต้องการสูง:</strong> กุมภาพันธ์ - มีนาคม, กันยายน และ พฤศจิกายน ของทุกปี จะมียอดผู้เข้าใช้ห้องสมุดอยู่ที่ <strong>3,500 - 5,000 คน-ครั้ง/เดือน</strong> (กรอง 1 คน/วัน) และมีผู้ใช้ห้องประชุมพุ่งสูงขึ้นถึง <strong>600 - 1,100 คน-ครั้ง/เดือน</strong></li>
+                                        <li><strong>ช่วงนอกฤดูกาล (Off-Peak):</strong> เดือนมิถุนายน และ กรกฎาคม ซึ่งเป็นช่วงปิดเทอม ยอดการจองห้องประชุมลดลงเหลือเพียง 5 - 60 คน-ครั้ง/เดือน</li>
+                                        <li><strong>นัยเชิงการบริหาร:</strong> ควรขยายชั่วโมงเปิดให้บริการห้องประชุมเป็น 24 ชั่วโมง หรือเปิดโซนพิเศษเฉพาะในเดือนที่กำหนดข้างต้น เพื่อบริหารค่าใช้จ่ายสาธารณูปโภคได้อย่างมีประสิทธิภาพ</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Highlighted Point 2 -->
+                            <div class="analysis-card">
+                                <div class="card-num">02</div>
+                                <div class="analysis-card-content">
+                                    <h3>ความนิยมของห้องประชุมไม่สม่ำเสมอ (Skewed Room Utilization)</h3>
+                                    <p>
+                                        มีการกระจายตัวของผู้ใช้บริการในห้องต่าง ๆ แตกต่างกันอย่างสุดขั้ว:
+                                    </p>
+                                    <ul>
+                                        <li><strong>กลุ่มห้องยอดนิยมระดับสูง:</strong> <span class="badge badge-success">ห้อง 909</span>, <span class="badge badge-success">ห้อง 907</span>, และ <span class="badge badge-success">ห้อง 905</span> มียอดใช้บริการสูงสุดอย่างต่อเนื่อง โดยเฉพาะห้อง 909 ที่ได้รับความนิยมสูงสุดในทุกปี (สัดส่วน 28.4%)</li>
+                                        <li><strong>กลุ่มห้องที่ใช้งานน้อย:</strong> <span class="badge badge-warning">ห้อง 906</span>, <span class="badge badge-warning">ห้อง 928</span> มีการบันทึกประวัติต่ำมากในหลายเดือน</li>
+                                        <li><strong>นัยเชิงการบริหาร:</strong> 
+                                            ควรทำแบบสำรวจความพึงพอใจว่าทำไมห้อง 906 และ 928 จึงมีผู้ใช้น้อย (เช่น อุปกรณ์ แอร์ หรือระบบเสียง) 
+                                            หรือพิจารณาปรับปรุงเชิงพื้นที่เปลี่ยนห้องเหล่านี้เป็นห้องติวกลุ่มย่อยที่ไม่ต้องจองล่วงหน้า
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Highlighted Point 3 -->
+                            <div class="analysis-card">
+                                <div class="card-num">03</div>
+                                <div class="analysis-card-content">
+                                    <h3>โอกาสจากการขยายกะดึก 24 ชั่วโมง (Shift Pattern Opportunity)</h3>
+                                    <p>
+                                        จากสถิติประตูทางเข้า มีความต้องการใช้งานในช่วงกะดึก (19.01 - 00.00 น.) และกะดึก-เช้า (00.01 - 07.59 น.) เพิ่มขึ้นอย่างชัดเจนตั้งแต่ปี 2567 เป็นต้นมา:
+                                    </p>
+                                    <ul>
+                                        <li>ในเดือนช่วงสอบ (ก.ย., ก.พ., พ.ย.) มีการเข้าใช้ช่วงดึกสะสมประมาณ <strong>500 - 650 คน-ครั้ง/เดือน</strong> (รวมสะสมตลอดปีเกินกว่า 2,500 - 3,500 คน-ครั้ง)</li>
+                                        <li>การที่เปิดให้ใช้บริการช่วงเวลาสอบจนถึงเที่ยงคืนและเปิดบริการ 24 ชั่วโมง ช่วยดึงดูดผู้ใช้งานได้มาก และสอดคล้องกับพฤติกรรมของนักศึกษายุคใหม่</li>
+                                        <li><strong>ข้อเสนอเชิงกลยุทธ์:</strong> เสนอให้จัดสรรโควตาเจ้าหน้าที่ดูแลความปลอดภัยเพิ่มขึ้นในกะดึกเฉพาะสัปดาห์ก่อนสอบ และปิดบริการบางส่วนในช่วงปิดภาคเรียนเพื่อลดภาระค่าไฟฟ้า</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Strategic Action Plan -->
+                            <div class="strategic-box">
+                                <h3><i class="fa-solid fa-clipboard-list"></i> ข้อเสนอแผนกลยุทธ์การตัดสินใจ (Strategic Decisions for Executives)</h3>
+                                <div class="grid-steps">
+                                    <div class="step-col">
+                                        <div class="step-head">
+                                            <span class="step-badge bg-blue">ระยะสั้น</span>
+                                            <h4>ปรับปรุงสิ่งอำนวยความสะดวก</h4>
+                                        </div>
+                                        <p>เร่งตรวจสอบระบบปลั๊กไฟ อุปกรณ์ต่อเชื่อมจอภาพ และสภาพเก้าอี้ของห้องที่ใช้งานต่ำ เช่น ห้อง 906 และ 928 เพื่อยกมาตรฐานให้พร้อมใช้งานเท่ากับห้อง 909</p>
+                                    </div>
+                                    <div class="step-col">
+                                        <div class="step-head">
+                                            <span class="step-badge bg-green">ระยะกลาง</span>
+                                            <h4>Dynamic Resource Allocation</h4>
+                                        </div>
+                                        <p>ปรับตารางเวรเจ้าหน้าที่บริการและเปิดเครื่องปรับอากาศตามตารางฤดูกาลการจอง โดยลดอัตรากำลังลง 60% ในช่วงปิดเทอมใหญ่ (มิ.ย.-ก.ค.) และเสริมอัตรากำลังขึ้น 150% ในเดือนสอบหลัก (ก.พ., มี.ค., ก.ย., พ.ย.)</p>
+                                    </div>
+                                    <div class="step-col">
+                                        <div class="step-head">
+                                            <span class="step-badge bg-amber">ระยะยาว</span>
+                                            <h4>ระบบจองแบบ Smart Booking</h4>
+                                        </div>
+                                        <p>พัฒนาระบบจองห้องประชุมผ่านแอปพลิเคชันที่มีการสแกน QR Code เข้าใช้อัตโนมัติ เพื่อนำข้อมูลเวลาใช้งานจริง (Actual Usage Time) มาคำนวณทิศทางการบริหารพื้นที่ได้อย่างแม่นยำยิ่งขึ้น</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Edit Form (Hidden by default) -->
+                    <div id="analysis-edit-view" style="display: none; padding: 24px;">
+                        <h2 style="font-family: var(--font-heading); color: var(--text-primary); margin-bottom: 20px; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
+                            <i class="fa-solid fa-pen-to-square text-blue"></i> แก้ไขบทวิเคราะห์สรุปสำหรับผู้บริหาร
+                        </h2>
+                        
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label style="font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;">หัวข้อหลัก (Main Title)</label>
+                            <input type="text" id="edit-analysis-title" class="form-control" style="width: 100%; height: 42px;">
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 24px;">
+                            <label style="font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;">บทนำสรุป (Lead Text)</label>
+                            <textarea id="edit-analysis-lead" class="form-control" style="width: 100%; height: 80px; resize: vertical; font-family: Sarabun, sans-serif; padding: 10px;"></textarea>
+                        </div>
+                        
+                        <!-- Points Edit Areas -->
+                        <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 16px; color: var(--text-primary); font-family: var(--font-heading); font-size: 1.2rem;">ประเด็นสำคัญ (Key Analysis Points)</h3>
+                        
+                        <div id="edit-points-container">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+
+                        <!-- Add Point Button -->
+                        <button type="button" id="btn-add-point" class="btn" style="margin-top: 10px; margin-bottom: 24px; height: 38px; font-family: Noto Sans Thai; font-weight: 600; cursor: pointer; background: var(--bg-card); border: 1px dashed var(--border-color); color: var(--text-primary); display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%; border-radius: 6px;">
+                            <i class="fa-solid fa-plus text-blue"></i> เพิ่มประเด็นใหม่
+                        </button>
+                        
+                        <!-- Strategies Edit Areas -->
+                        <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-top: 30px; margin-bottom: 16px; color: var(--text-primary); font-family: var(--font-heading); font-size: 1.2rem;">ข้อเสนอแผนกลยุทธ์การตัดสินใจ (Strategic Action Plan)</h3>
+                        
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label style="font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;">หัวข้อแผนกลยุทธ์</label>
+                            <input type="text" id="edit-strategic-title" class="form-control" style="width: 100%; height: 42px;">
+                        </div>
+                        
+                        <div id="edit-strategies-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+
+                        <!-- Add Strategy Button -->
+                        <button type="button" id="btn-add-strategy" class="btn" style="margin-top: 10px; margin-bottom: 24px; height: 38px; font-family: Noto Sans Thai; font-weight: 600; cursor: pointer; background: var(--bg-card); border: 1px dashed var(--border-color); color: var(--text-primary); display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%; border-radius: 6px;">
+                            <i class="fa-solid fa-plus text-purple"></i> เพิ่มแผนกลยุทธ์ใหม่
+                        </button>
+                        
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                            <button id="btn-cancel-analysis" class="btn-secondary" style="height: 42px; padding: 0 20px; font-weight: 600; font-family: Noto Sans Thai; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-xmark"></i> ยกเลิก</button>
+                            <button id="btn-save-analysis" class="btn-primary" style="height: 42px; padding: 0 20px; font-weight: 600; font-family: Noto Sans Thai; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-save"></i> บันทึกการเปลี่ยนแปลง</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+<section id="tab-settings" class="tab-panel">
+                <div class="section-card glass-card">
+                    <div class="section-card-header flex-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <h2 style="margin: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span><i class="fa-solid fa-calendar-days text-blue"></i> จัดการข้อมูลรายปี (Manage Annual Data)</span>
+                                <button type="button" id="btn-header-add-year" class="btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 5px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);">
+                                    <i class="fa-solid fa-plus-circle"></i> + เพิ่มปี พ.ศ. ใหม่
+                                </button>
+                            </h2>
+                            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 0.95rem;">จัดการสถานะการแสดงผล ป้อนข้อมูลปีใหม่ หรือลบปีข้อมูลออกจากระบบ</p>
+                        </div>
+                        <button id="btn-admin-logout" class="btn btn-danger-outline" style="display: none;">
+                            <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+                        </button>
+                    </div>
+
+                    <!-- Admin Password Login Card -->
+                    <div id="admin-login-card" class="login-card">
+                        <div class="login-header">
+                            <i class="fa-solid fa-lock login-icon animate-pulse"></i>
+                            <h3>กรุณาลงชื่อเข้าใช้งานสำหรับผู้ดูแลระบบ</h3>
+                            <p>ป้อนรหัสผ่านเพื่อจัดการและอัปโหลดไฟล์ข้อมูล</p>
+                        </div>
+                        <div class="login-form">
+                            <div class="form-group-login">
+                                <label for="admin-password">รหัสผ่าน (Password)</label>
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="admin-password" class="form-control-login" placeholder="ป้อนรหัสผ่าน...">
+                                    <button type="button" id="btn-toggle-password" class="btn-toggle-pwd"><i class="fa-solid fa-eye"></i></button>
+                                </div>
+                                <div id="login-error-msg" class="error-text" style="display: none;"><i class="fa-solid fa-triangle-exclamation"></i> รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง</div>
+                            </div>
+                            <button type="button" id="btn-admin-login" class="btn btn-primary btn-block">
+                                <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Admin Settings Content (Hidden by default) -->
+                    <div id="admin-settings-content" style="display: none;">
+                        <!-- Admin Quick Utility Bar -->
+                        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
+                            <button type="button" id="btn-top-add-year" class="btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; border: none; padding: 9px 18px; border-radius: 8px; font-family: 'Noto Sans Thai', sans-serif; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);" title="สร้างสถิติปี พ.ศ. ใหม่ เพื่อพิมพ์กรอกข้อมูลย้อนหลังหรือปีอนาคต">
+                                <i class="fa-solid fa-plus-circle"></i> + เพิ่มปี พ.ศ. ใหม่
+                            </button>
+                            <button type="button" id="btn-reset-cache" class="btn" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; border-radius: 8px; font-family: 'Noto Sans Thai', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-rotate-left"></i> ล้างแคชข้อมูลเบราว์เซอร์ / โหลดค่าเริ่มต้น
+                            </button>
+                            <button type="button" id="btn-export-backup" class="btn" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 8px 16px; border-radius: 8px; font-family: 'Noto Sans Thai', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-download"></i> สำรองฐานข้อมูล (Export JSON)
+                            </button>
+                        </div>
+
+                        <!-- Upload Dropzone -->
+                        <div class="upload-zone" id="upload-dropzone">
+                            <i class="fa-solid fa-cloud-arrow-up upload-icon-big"></i>
+                            <h3>ลากและวางไฟล์สถิติ Excel (.xlsx) หรือ CSV (.csv) เพื่ออัปโหลดเข้าสู่ระบบ</h3>
+                            <p class="upload-subtext">ระบบรองรับการอัปโหลดทีละหลายไฟล์พร้อมกัน และจะเชื่อมโยงฐานข้อมูลรวมรายปีโดยอัตโนมัติ</p>
+                            <button type="button" class="btn btn-primary" id="btn-select-files">
+                                <i class="fa-solid fa-file-circle-plus"></i> เลือกไฟล์ Excel หรือ CSV
+                            </button>
+                            <input type="file" id="file-input" accept=".xlsx, .csv" multiple style="display: none;">
+                            <div id="upload-status" class="upload-status-banner"></div>
+                        </div>
+
+                        <div class="table-wrapper">
+                            <table id="table-settings-years" class="premium-table">
+                                <thead>
+                                    <tr>
+                                        <th>ปี พ.ศ.</th>
+                                        <th>ปี ค.ศ.</th>
+                                        <th>ประเภทข้อมูล</th>
+                                        <th>แหล่งที่มา (ชื่อไฟล์/ชีท)</th>
+                                        <th style="text-align: center;">แสดงผลบนแดชบอร์ด</th>
+                                        <th style="text-align: center; width: 120px;">การจัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Will be populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Monthly Data Editor Section -->
+                        <div class="card" style="margin-top: 30px; border-top: 2px solid var(--primary-color);">
+                            <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 20px;">
+                                <h3 style="font-family: var(--font-heading); color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 10px; width: 100%;">
+                                    <i class="fa-solid fa-pen-to-square text-blue"></i> แก้ไขข้อมูลรายเดือน (ตารางสถิติรายปีแบบละเอียด)
+                                    <span id="editor-save-status" style="font-size: 0.85rem; font-weight: 500; margin-left: auto; transition: opacity 0.3s ease; opacity: 0; display: inline-flex; align-items: center; gap: 6px;"></span>
+                                </h3>
+                                <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 4px 0 0 0;">คลิกแก้ไขตัวเลขการใช้งานของแต่ละห้องประชุมหรือแต่ละกะเวลาโดยตรง หรือกดล้างข้อมูลเป็นรายเดือนเพื่อนำออกจากการประมวลผล</p>
+                            </div>
+                            <div class="editor-controls" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px;">
+                                <div class="control-group" style="flex: 1; min-width: 150px;">
+                                    <label for="editor-year-select" style="font-family: var(--font-heading); font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;"><i class="fa-solid fa-calendar"></i> เลือกปี พ.ศ.</label>
+                                    <select id="editor-year-select" class="form-control" style="width: 100%; height: 42px;">
+                                        <!-- Populated dynamically based on available years -->
+                                    </select>
+                                </div>
+                                <div class="control-group" style="display: flex; align-items: flex-end; height: 42px;">
+                                    <button id="btn-add-year" class="btn btn-success" style="height: 42px; background-color: var(--success-color); color: white; border: none; padding: 0 16px; font-weight: 600; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s ease;">
+                                        <i class="fa-solid fa-plus"></i> เพิ่มปี พ.ศ. ใหม่
+                                    </button>
+                                </div>
+                                <div class="control-group" style="flex: 1; min-width: 200px;">
+                                    <label for="editor-type-select" style="font-family: var(--font-heading); font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block;"><i class="fa-solid fa-chart-simple"></i> เลือกประเภทข้อมูล</label>
+                                    <select id="editor-type-select" class="form-control" style="width: 100%; height: 42px;">
+                                        <option value="rooms" selected>ข้อมูลสถิติห้องประชุม (Meeting Rooms)</option>
+                                        <option value="doors">ข้อมูลสถิติประตูหน้าห้องสมุด (Library Doors)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="table-wrapper" id="editor-table-wrapper" style="overflow-x: auto; max-width: 100%;">
+                                <table id="table-monthly-editor" class="premium-table editor-table">
+                                    <thead>
+                                        <!-- Populated dynamically based on selected type -->
+                                    </thead>
+                                    <tbody>
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div style="margin-top: 24px; color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6;">
+                            <p><i class="fa-solid fa-circle-info text-blue"></i> <strong>คำแนะนำการใช้งาน:</strong></p>
+                            <p>1. เมื่อปิดสวิตช์แสดงผล (Hide) ข้อมูลของปีนั้น ๆ จะถูกนำออกจากการคำนวณในหน้าสรุป กราฟเปรียบเทียบ และบทวิเคราะห์ทั้งหมดโดยทันที</p>
+                            <p>2. สวิตช์เปิด/ปิดเป็นการคัดกรองเฉพาะหน้าจอแสดงผลชั่วคราว หากท่านต้องการลบข้อมูลที่ไม่ถูกต้องออกจากระบบอย่างถาวร ให้กดปุ่ม <strong>"ลบข้อมูล"</strong> ในแถวนั้น</p>
+                            <p>3. การลบข้อมูล CSV จะใช้วิธีเปลี่ยนชื่อไฟล์เพื่อซ่อนจากการแสกน และสำหรับ Excel จะเป็นการเปลี่ยนชื่อชีทให้มีคำนำหน้าว่า <code>DELETED_</code> ซึ่งปลอดภัยจากการสูญหาย</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Error/Loading Overlay -->
+    <div id="loading-overlay" class="overlay">
+        <div class="spinner-container">
+            <div class="double-bounce1"></div>
+            <div class="double-bounce2"></div>
+            <p id="loading-text">กำลังประมวลผลข้อมูลแดชบอร์ด...</p>
+        </div>
+    </div>
+
+    <!-- Admin Password Prompt Modal for Analysis Tab -->
+    <div id="password-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <i class="fa-solid fa-shield-halved text-blue" style="font-size: 1.5rem;"></i>
+                <h3>ยืนยันสิทธิ์ผู้ดูแลระบบ</h3>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 12px;">กรุณากรอกรหัสผ่านเพื่อเข้าสู่โหมดแก้ไขบทวิเคราะห์</p>
+                <div class="form-group" style="position: relative;">
+                    <input type="password" id="modal-admin-password" class="form-control" placeholder="รหัสผ่านผู้ดูแลระบบ" style="width: 100%; height: 42px; padding-right: 40px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-body); color: var(--text-primary);">
+                    <button type="button" id="btn-modal-toggle-pwd" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+                <div id="modal-password-error" style="color: #ef4444; font-size: 0.85rem; margin-top: 6px; display: none;">
+                    <i class="fa-solid fa-circle-exclamation"></i> รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-modal-cancel" class="btn-secondary" style="height: 38px; border-radius: 6px; padding: 0 16px; cursor: pointer; font-family: Noto Sans Thai;">ยกเลิก</button>
+                <button type="button" id="btn-modal-confirm" class="btn-primary" style="height: 38px; border-radius: 6px; padding: 0 16px; cursor: pointer; font-family: Noto Sans Thai;">เข้าสู่ระบบ</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
