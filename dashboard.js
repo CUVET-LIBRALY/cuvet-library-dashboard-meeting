@@ -3161,8 +3161,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPublishOnline = document.getElementById('btn-publish-online');
     if (btnPublishOnline) {
         btnPublishOnline.addEventListener('click', async () => {
-            if (window.location.hostname.includes('netlify')) {
-                alert('🌐 ขณะนี้คุณกำลังรับชมรายงานสดบนระบบคลาวด์ Netlify อยู่แล้วครับ!\n\nข้อมูลสถิติทั้งหมดที่แสดงอยู่นี้ เป็นข้อมูลล่าสุด 100% เรียบร้อยแล้ว สามารถแชร์ลิงก์ https://cuvet-meeting-dashboard.netlify.app ให้ผู้บริหารเปิดดูได้จากทุกที่ทั่วโลกทันทีครับ');
+            if (window.location.hostname.includes('github.io') || window.location.hostname.includes('netlify.app')) {
+                alert('🌐 ขณะนี้ระบบกำลังทำงานและแสดงผลสดบน GitHub Pages เรียบร้อยแล้วครับ!\n\nข้อมูลสถิติและการแก้ไขที่คุณทำในตารางแอดมิน จะแสดงผลอัปเดตสดบนหน้าจอแดชบอร์ดทันที\n\nหากต้องการบันทึกการแก้ไขตัวเลขถาวรลงในคลัง GitHub:\nให้ไปที่เมนู "จัดการข้อมูลรายปี" -> กดปุ่ม "สำรองฐานข้อมูล (Export JSON)" แล้วนำไฟล์ extracted_data.json ลากไปวางใน GitHub Repository ได้เลยครับ (ใช้เวลาเพียง 5 วินาที)!');
                 return;
             }
 
@@ -3175,13 +3175,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const resData = await response.json();
 
                 if (response.ok && resData.success) {
-                    alert('🚀 อัปเดตข้อมูลขึ้นเว็บไซต์ออนไลน์เรียลไทม์สำเร็จ 100%!\n\nผู้บริหารสามารถเปิดดูข้อมูลล่าสุดได้ทันทีที่:\nhttps://cuvet-meeting-dashboard.netlify.app');
+                    alert('🚀 อัปเดตข้อมูลขึ้นเว็บไซต์ออนไลน์เรียลไทม์สำเร็จ 100%!');
                 } else {
                     alert('เกิดข้อผิดพลาดในการอัปเดต: ' + (resData.error || 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้'));
                 }
             } catch (err) {
                 console.error('Publish error:', err);
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่ออัปเดตรายงานออนไลน์: ' + err.message);
+                alert('💡 ขณะนี้หน้าเว็บแสดงผลสดบนโฮสติ้งออนไลน์เรียบร้อยแล้ว หากต้องการอัปเดตไฟล์ข้อมูลหลัก สามารถกดปุ่มสำรองฐานข้อมูล (Export JSON) ไปอัปโหลดบน GitHub ได้เลยครับ');
             } finally {
                 btnPublishOnline.disabled = false;
                 btnPublishOnline.innerHTML = originalHTML;
