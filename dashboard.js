@@ -918,15 +918,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Enhanced Client-side Excel / CSV Parser for Static Netlify Hosts via SheetJS
+    // Enhanced Client-side Excel / CSV Parser for Static Hosts (GitHub Pages / Netlify) via SheetJS
     async function parseExcelFileClientSide(file) {
         return new Promise((resolve, reject) => {
+            const ext = file.name.split('.').pop().toLowerCase();
             const reader = new FileReader();
+
             reader.onload = function(e) {
                 try {
-                    const textContent = e.target.result;
+                    let lines = [];
+                    if (ext === 'xlsx') {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const csvText = XLSX.utils.sheet_to_csv(worksheet);
+                        lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
+                    } else {
+                        const textContent = e.target.result;
+                        lines = textContent.split(/\r?\n/).filter(l => l.trim().length > 0);
+                    }
 
-                    // 1. Detect Year
+                    // 1. Detect Year & Month from Filename or Date column
                     let detectedYear = null;
                     const matchBE = file.name.match(/25\d{2}/);
                     const matchCE = file.name.match(/20\d{2}/);
@@ -934,29 +947,63 @@ document.addEventListener('DOMContentLoaded', () => {
                         detectedYear = parseInt(matchBE[0]);
                     } else if (matchCE) {
                         detectedYear = parseInt(matchCE[0]) + 543;
-                    } else {
-                        detectedYear = 2569;
                     }
 
-                    // 2. Detect Month Index
-                    let detectedMonth = 9; // Default September for Monthly__9
-                    const matchMonth = file.name.match(/Monthly__?(\d+)/i) || file.name.match(/Daily_\d+_(\d+)/i) || file.name.match(/Set_Date_\d+_(\d+)/i);
+                    let detectedMonth = null;
+                    const matchMonth = file.name.match(/Monthly__?(\d+)/i) || file.name.match(/Daily_\d+_(\d+)/i) || file.name.match(/Set_Date_\d+_(\d+)/i) || file.name.match(/[_-](\d{1,2})[_-]20\d{2}/);
                     if (matchMonth) {
                         detectedMonth = parseInt(matchMonth[1]);
+                    } else {
+                        const thaiMonthsMap = {
+                            'มกราคม': 1, 'กุมภาพันธ์': 2, 'มีนาคม': 3, 'เมษายน': 4, 'พฤษภาคม': 5, 'มิถุนายน': 6,
+                            'กรกฎาคม': 7, 'สิงหาคม': 8, 'กันยายน': 9, 'ตุลาคม': 10, 'พฤศจิกายน': 11, 'ธันวาคม': 12,
+                            'ม.ค.': 1, 'ก.พ.': 2, 'มี.ค.': 3, 'เม.ย.': 4, 'พ.ค.': 5, 'มิ.ย.': 6,
+                            'ก.ค.': 7, 'ส.ค.': 8, 'ก.ย.': 9, 'ต.ค.': 10, 'พ.ย.': 11, 'ธ.ค.': 12,
+                            'oct': 10, 'sep': 9, 'nov': 11, 'dec': 12
+                        };
+                        const lowerName = file.name.toLowerCase();
+                        for (const [mKey, mVal] of Object.entries(thaiMonthsMap)) {
+                            if (lowerName.includes(mKey)) {
+                                detectedMonth = mVal;
+                                break;
+                            }
+                        }
                     }
 
-                    const yearCE = detectedYear - 543;
-
-                    // 3. Parse CSV rows
-                    const lines = textContent.split(/\r?\n/).filter(l => l.trim().length > 0);
+                    // 2. Parse CSV/Sheet rows
                     if (lines.length > 1) {
                         const sep = lines[0].includes(';') ? ';' : ',';
                         const headers = lines[0].split(sep).map(h => h.replace(/"/g, '').trim());
 
-                        const doorIdx = headers.findIndex(h => h.toLowerCase() === 'door');
-                        const timeIdx = headers.findIndex(h => h.toLowerCase() === 'time');
-                        const dateIdx = headers.findIndex(h => h.toLowerCase() === 'date');
-                        const idIdx = headers.findIndex(h => h.toLowerCase() === 'id');
+                        const doorIdx = headers.findIndex(h => h.toLowerCase() === 'door' || h.includes('ประตู') || h.includes('ห้อง'));
+                        const timeIdx = headers.findIndex(h => h.toLowerCase() === 'time' || h.includes('เวลา'));
+                        const dateIdx = headers.findIndex(h => h.toLowerCase() === 'date' || h.includes('วันที่'));
+                        const idIdx = headers.findIndex(h => h.toLowerCase() === 'id' || h.includes('รหัส'));
+
+                        // Try to auto-detect month/year from first data row's Date column if not in filename
+                        if ((!detectedMonth || !detectedYear) && dateIdx !== -1 && lines.length > 1) {
+                            for (let r = 1; r < Math.min(lines.length, 20); r++) {
+                                const sampleRow = lines[r].split(sep).map(c => c.replace(/"/g, '').trim());
+                                const dStr = sampleRow[dateIdx] || '';
+                                const parts = dStr.split(/[\/\-]/);
+                                if (parts.length === 3) {
+                                    let p0 = parseInt(parts[0]), p1 = parseInt(parts[1]), p2 = parseInt(parts[2]);
+                                    if (p2 > 1900) {
+                                        if (!detectedYear) detectedYear = p2 > 2400 ? p2 : p2 + 543;
+                                        if (!detectedMonth) detectedMonth = p1 <= 12 ? p1 : p0;
+                                        break;
+                                    } else if (p0 > 1900) {
+                                        if (!detectedYear) detectedYear = p0 > 2400 ? p0 : p0 + 543;
+                                        if (!detectedMonth) detectedMonth = p1;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!detectedYear) detectedYear = 2569;
+                        if (!detectedMonth || detectedMonth < 1 || detectedMonth > 12) detectedMonth = 10;
+                        const yearCE = detectedYear - 543;
 
                         if (doorIdx !== -1 && timeIdx !== -1) {
                             let doorShifts = {
@@ -971,19 +1018,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             };
 
                             let roomMap = {
-                                "ห้อง0905": "ห้อง 905", "ห้อง905": "ห้อง 905",
-                                "ห้อง0906": "ห้อง 906", "ห้อง906": "ห้อง 906",
-                                "ห้อง0907": "ห้อง 907", "ห้อง907": "ห้อง 907",
-                                "ห้อง0908": "ห้อง 908", "ห้อง908": "ห้อง 908",
-                                "ห้อง0909": "ห้อง 909", "ห้อง909": "ห้อง 909",
-                                "ห้อง0910": "ห้อง 910", "ห้อง910": "ห้อง 910",
-                                "ห้อง0920": "ห้อง 920", "ห้อง920": "ห้อง 920",
-                                "ห้อง0931": "ห้อง 931", "ห้อง931": "ห้อง 931",
-                                "ห้อง927": "ห้อง 927",
-                                "ห้อง928": "ห้อง 928",
-                                "ห้อง929": "ห้อง 929",
-                                "ห้อง930": "ห้อง 930",
-                                "ห้อง932": "ห้อง 932"
+                                "ห้อง0905": "ห้อง 905", "ห้อง905": "ห้อง 905", "ห้อง 905": "ห้อง 905",
+                                "ห้อง0906": "ห้อง 906", "ห้อง906": "ห้อง 906", "ห้อง 906": "ห้อง 906",
+                                "ห้อง0907": "ห้อง 907", "ห้อง907": "ห้อง 907", "ห้อง 907": "ห้อง 907",
+                                "ห้อง0908": "ห้อง 908", "ห้อง908": "ห้อง 908", "ห้อง 908": "ห้อง 908",
+                                "ห้อง0909": "ห้อง 909", "ห้อง909": "ห้อง 909", "ห้อง 909": "ห้อง 909",
+                                "ห้อง0927": "ห้อง 927", "ห้อง927": "ห้อง 927", "ห้อง 927": "ห้อง 927",
+                                "ห้อง0928": "ห้อง 928", "ห้อง928": "ห้อง 928", "ห้อง 928": "ห้อง 928",
+                                "ห้อง0929": "ห้อง 929", "ห้อง929": "ห้อง 929", "ห้อง 929": "ห้อง 929",
+                                "ห้อง0930": "ห้อง 930", "ห้อง930": "ห้อง 930", "ห้อง 930": "ห้อง 930",
+                                "ห้อง0931": "ห้อง 931", "ห้อง931": "ห้อง 931", "ห้อง 931": "ห้อง 931",
+                                "ห้อง0932": "ห้อง 932", "ห้อง932": "ห้อง 932", "ห้อง 932": "ห้อง 932"
                             };
 
                             let visited = new Set();
@@ -995,6 +1040,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const dateVal = dateIdx !== -1 ? row[dateIdx] : 'date';
                                     const userId = idIdx !== -1 ? row[idIdx] : `u_${i}`;
 
+                                    if (!doorVal) continue;
                                     const uniqueKey = `${dateVal}-${userId}-${doorVal}`;
                                     if (!visited.has(uniqueKey)) {
                                         visited.add(uniqueKey);
@@ -1018,7 +1064,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                                 }
                                             }
                                         } else {
-                                            const targetRoom = roomMap[doorVal] || (roomCounts[doorVal] !== undefined ? doorVal : null);
+                                            let targetRoom = roomMap[doorVal] || (roomCounts[doorVal] !== undefined ? doorVal : null);
+                                            if (!targetRoom) {
+                                                const mRoom = doorVal.match(/9(0[5-9]|2[7-9]|3[0-2])/);
+                                                if (mRoom) targetRoom = `ห้อง ${mRoom[0]}`;
+                                            }
                                             if (targetRoom && roomCounts[targetRoom] !== undefined) {
                                                 roomCounts[targetRoom]++;
                                             }
@@ -1085,18 +1135,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
-                    resolve({ success: true, year: detectedYear, month: detectedMonth });
+                    resolve({ success: true, year: detectedYear || 2569, month: detectedMonth || 10 });
                 } catch (err) {
-                    console.error('Client-side CSV parsing error:', err);
+                    console.error('Client-side parsing error:', err);
                     reject(err);
                 }
             };
             reader.onerror = reject;
-            reader.readAsText(file, 'windows-874');
+            if (ext === 'xlsx') {
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.readAsText(file, 'windows-874');
+            }
         });
     }
 
-    // Function to upload files (Supports Server API and Web Static Netlify Mode)
+    // Function to upload files (Supports Server API and Web Static GitHub Pages / Netlify Mode)
     async function handleFileUploads(files) {
         const fileList = Array.from(files).filter(file => {
             const ext = file.name.split('.').pop().toLowerCase();
@@ -1110,26 +1164,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showLoading(`กำลังประมวลผลไฟล์สถิติ (${fileList.length} ไฟล์)...`);
 
-        // Check if running on Static Host (Netlify) or Local Server
-        const isStaticHost = window.location.hostname.includes('netlify') || window.location.protocol === 'file:';
+        // Check if running on Static Host (GitHub Pages / Netlify) or Local File
+        const isStaticHost = window.location.hostname.includes('github.io') || window.location.hostname.includes('netlify') || window.location.protocol === 'file:';
 
         if (isStaticHost) {
             try {
                 let lastYearParsed = null;
+                let lastMonthParsed = null;
                 for (let i = 0; i < fileList.length; i++) {
                     const res = await parseExcelFileClientSide(fileList[i]);
                     if (res && res.year) lastYearParsed = res.year;
+                    if (res && res.month) lastMonthParsed = res.month;
                 }
                 saveCloudDataLocally();
                 renderSettingsTab();
                 processDataAndRender();
-                showStatus(`🎉 อัปโหลดและรวมข้อมูลสถิติใหม่ (ปี พ.ศ. ${lastYearParsed || 'ล่าสุด'}) ขึ้นระบบเรียบร้อยแล้ว!`, 'success');
-                alert(`🎉 อัปโหลดไฟล์สถิติใหม่ขึ้นระบบคลาวด์เรียบร้อยแล้ว!\n\nระบบได้รวมข้อมูลปี พ.ศ. ${lastYearParsed || 2569} เดือนกันยายน เข้าสู่แดชบอร์ดให้คุณและผู้บริหารเรียบร้อยแล้วครับ!`);
+                const monthNameStr = lastMonthParsed ? MONTHS_TH[lastMonthParsed - 1] : 'ล่าสุด';
+                showStatus(`🎉 อัปโหลดและรวมข้อมูลสถิติใหม่ (เดือน ${monthNameStr} ปี พ.ศ. ${lastYearParsed || 2569}) ขึ้นระบบเรียบร้อยแล้ว!`, 'success');
+                alert(`🎉 อัปโหลดไฟล์สถิติใหม่เข้าสู่ระบบเรียบร้อยแล้ว!\n\nระบบได้รวมข้อมูลปี พ.ศ. ${lastYearParsed || 2569} (เดือน ${monthNameStr}) เข้าสู่แดชบอร์ดเรียบร้อยแล้วครับ!\n\n💡 หากต้องการบันทึกข้อมูลนี้ขึ้น GitHub ถาวร ให้กดปุ่ม "สำรองฐานข้อมูล (Export JSON)" แล้วลากไฟล์ extracted_data.json ไปวางใน GitHub ได้เลยครับ`);
             } catch (err) {
                 console.error(err);
                 showStatus('เกิดข้อผิดพลาดในการอ่านไฟล์: ' + err.message, 'error');
             } finally {
                 hideLoading();
+                if (fileInput) fileInput.value = '';
             }
             return;
         }
@@ -1137,18 +1195,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Local Server API Mode
         try {
             let uploadedCount = 0;
+            const selectedYear = 'auto';
+            const selectedType = 'auto';
             for (let i = 0; i < fileList.length; i++) {
                 let file = fileList[i];
                 const ext = file.name.split('.').pop().toLowerCase();
-                let isFiltered = false;
                 
                 if (ext === 'csv') {
                     showLoading(`กำลังวิเคราะห์และกรองข้อมูลดิบของไฟล์ "${file.name}"...`);
-                    const originalSize = file.size;
                     const processedBlob = await filterRawCsv(file);
                     if (processedBlob !== file) {
                         file = processedBlob;
-                        isFiltered = true;
                     }
                 }
                 
@@ -1183,10 +1240,6 @@ document.addEventListener('DOMContentLoaded', () => {
             appData = await refreshRes.json();
 
             showStatus(`อัปโหลดสำเร็จจำนวน ${uploadedCount} ไฟล์ และรีเฟรชข้อมูลแดชบอร์ดเรียบร้อยแล้ว!`, 'success');
-            
-            // Reset dropdowns
-            if (yearSelect) yearSelect.value = 'auto';
-            if (typeSelect) typeSelect.value = 'auto';
 
             // Re-render UI
             renderSettingsTab();
